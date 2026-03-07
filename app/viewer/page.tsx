@@ -13,9 +13,11 @@ export default function ViewerPage() {
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
   const [data, setData] = useState<Meal[]>([])
+  const [editing, setEditing] = useState<Meal | null>(null)
 
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
+  // Generate 30-min time slots
   const times: string[] = []
   for (let h = 7; h <= 23; h++) {
     for (let m of [0, 30]) {
@@ -26,6 +28,7 @@ export default function ViewerPage() {
     }
   }
 
+  // Load meals from API
   async function loadGrid() {
     if (!startDate || !endDate) return
     const res = await fetch(`/api/meals?start=${startDate}&end=${endDate}`)
@@ -42,6 +45,53 @@ export default function ViewerPage() {
       })
       .map((e) => e.food)
       .join(", ")
+  }
+
+  // Find the first meal id for a cell (for editing)
+  const getMealId = (dayIndex: number, time: string) => {
+    const meal = data.find((e) => {
+      const date = new Date(e.meal_date)
+      return date.getDay() === dayIndex && e.meal_time === time
+    })
+    return meal ? meal.id : null
+  }
+
+  // Open edit modal for a cell
+  const openEdit = (dayIndex: number, time: string) => {
+    const mealId = getMealId(dayIndex, time)
+    const mealFood = getCell(dayIndex, time)
+    if (mealId !== null) {
+      setEditing({ id: mealId, meal_date: "", meal_time: "", food: mealFood })
+    } else {
+      // create a temporary meal for new entry
+      setEditing({ id: -1, meal_date: "", meal_time: "", food: "" })
+    }
+  }
+
+  // Save edited meal
+  const saveEdit = async () => {
+    if (!editing) return
+    if (editing.id === -1) {
+      // Create new meal
+      await fetch("/api/saveMeal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: startDate,
+          time: "07:00", // default time, adjust as needed
+          food: editing.food,
+        }),
+      })
+    } else {
+      // Update existing meal
+      await fetch(`/api/meals/${editing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ food: editing.food }),
+      })
+    }
+    setEditing(null)
+    loadGrid()
   }
 
   return (
@@ -97,12 +147,59 @@ export default function ViewerPage() {
             <tr key={time}>
               <td>{time}</td>
               {days.map((_, dayIndex) => (
-                <td key={dayIndex}>{getCell(dayIndex, time)}</td>
+                <td
+                  key={dayIndex}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => openEdit(dayIndex, time)}
+                >
+                  {getCell(dayIndex, time)}
+                </td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
+
+      {/* Edit Modal */}
+      {editing && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              padding: "20px",
+              borderRadius: "8px",
+              width: "400px",
+            }}
+          >
+            <h3>Edit Meal</h3>
+            <textarea
+              value={editing.food}
+              onChange={(e) =>
+                setEditing({ ...editing, food: e.target.value })
+              }
+              style={{ width: "100%", height: "80px" }}
+            />
+            <div style={{ marginTop: "10px", textAlign: "right" }}>
+              <button onClick={saveEdit} style={{ marginRight: "10px" }}>
+                Save
+              </button>
+              <button onClick={() => setEditing(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
