@@ -1,15 +1,37 @@
+import { NextRequest, NextResponse } from "next/server"
 import { sql } from "@vercel/postgres"
 
-export async function POST(req:Request){
+// GET /api/meals?start=YYYY-MM-DD&end=YYYY-MM-DD
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const start = searchParams.get("start")
+  const end = searchParams.get("end")
 
-const {start,end}=await req.json()
+  if (!start || !end) {
+    return NextResponse.json(
+      { error: "Missing start or end date" },
+      { status: 400 }
+    )
+  }
 
-const {rows}=await sql`
-SELECT * FROM meals
-WHERE meal_date BETWEEN ${start} AND ${end}
-`
+  // Ensure dates are in YYYY-MM-DD format
+  const startDate = start
+  const endDate = end
 
-return Response.json(rows)
+  try {
+    const meals = await sql`
+      SELECT id, meal_date, meal_time, food
+      FROM meals
+      WHERE meal_date >= ${startDate} AND meal_date <= ${endDate}
+      ORDER BY meal_date, meal_time
+    `
 
+    return NextResponse.json(meals.rows)
+  } catch (err) {
+    console.error("Error fetching meals:", err)
+    return NextResponse.json(
+      { error: "Failed to fetch meals" },
+      { status: 500 }
+    )
+  }
 }
-
