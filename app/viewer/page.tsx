@@ -11,7 +11,6 @@ type Meal = {
 
 export default function ViewerPage() {
   const [startDate, setStartDate] = useState<string>("")
-  const [endDate, setEndDate] = useState<string>("")
   const [data, setData] = useState<Meal[]>([])
   const [editing, setEditing] = useState<Meal | null>(null)
 
@@ -26,22 +25,24 @@ export default function ViewerPage() {
     }
   }
 
-  // Generate week dates array between startDate and endDate
+  // Generate 7 dates for the week (Sunday → Saturday) based on startDate
   const weekDates: string[] = []
-  if (startDate && endDate) {
+  if (startDate) {
     const start = new Date(startDate)
-    const end = new Date(endDate)
-    const current = new Date(start)
-    while (current <= end) {
-      weekDates.push(current.toISOString().split("T")[0])
-      current.setDate(current.getDate() + 1)
+    const sunday = new Date(start)
+    sunday.setDate(start.getDate() - start.getDay()) // move to Sunday
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sunday)
+      d.setDate(sunday.getDate() + i)
+      weekDates.push(d.toISOString().split("T")[0])
     }
   }
 
   // Load meals from API
   async function loadGrid() {
-    if (!startDate || !endDate) return
-    const res = await fetch(`/api/meals?start=${startDate}&end=${endDate}`)
+    if (!startDate) return
+    const end = weekDates[6] // Saturday of the week
+    const res = await fetch(`/api/meals?start=${weekDates[0]}&end=${end}`)
     const json = await res.json()
     setData(json)
   }
@@ -103,22 +104,13 @@ export default function ViewerPage() {
         />
       </label>
 
-      <label style={{ marginLeft: "20px" }}>
-        End Date:{" "}
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-        />
-      </label>
-
       <button
         style={{ marginLeft: "20px" }}
         onClick={() => {
           loadGrid()
         }}
       >
-        Show
+        Show Week
       </button>
 
       <table
