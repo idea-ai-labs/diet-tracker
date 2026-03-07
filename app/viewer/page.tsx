@@ -15,9 +15,7 @@ export default function ViewerPage() {
   const [data, setData] = useState<Meal[]>([])
   const [editing, setEditing] = useState<Meal | null>(null)
 
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-
-  // Generate 30-min time slots
+  // Generate 30-min time slots from 7:00 to 23:30
   const times: string[] = []
   for (let h = 7; h <= 23; h++) {
     for (let m of [0, 30]) {
@@ -25,6 +23,18 @@ export default function ViewerPage() {
       const hh = String(h).padStart(2, "0")
       const mm = String(m).padStart(2, "0")
       times.push(`${hh}:${mm}`)
+    }
+  }
+
+  // Generate week dates array between startDate and endDate
+  const weekDates: string[] = []
+  if (startDate && endDate) {
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    const current = new Date(start)
+    while (current <= end) {
+      weekDates.push(current.toISOString().split("T")[0])
+      current.setDate(current.getDate() + 1)
     }
   }
 
@@ -36,39 +46,25 @@ export default function ViewerPage() {
     setData(json)
   }
 
-  // Helper to get meals for a given day index and time
-  const getCell = (dayIndex: number, time: string) => {
+  // Helper to get meals for a given date + time
+  const getCell = (date: string, time: string) => {
     return data
-      .filter((e) => {
-        const date = new Date(e.meal_date)
-        return date.getDay() === dayIndex && e.meal_time === time
-      })
+      .filter((e) => e.meal_date === date && e.meal_time === time)
       .map((e) => e.food)
       .join(", ")
   }
 
-  // Find the first meal id for a cell (for editing)
-  const getMealId = (dayIndex: number, time: string) => {
-    const meal = data.find((e) => {
-      const date = new Date(e.meal_date)
-      return date.getDay() === dayIndex && e.meal_time === time
-    })
-    return meal ? meal.id : null
-  }
-
   // Open edit modal for a cell
-  const openEdit = (dayIndex: number, time: string) => {
-    const mealId = getMealId(dayIndex, time)
-    const mealFood = getCell(dayIndex, time)
-    if (mealId !== null) {
-      setEditing({ id: mealId, meal_date: "", meal_time: "", food: mealFood })
+  const openEditByDate = (date: string, time: string) => {
+    const meal = data.find((e) => e.meal_date === date && e.meal_time === time)
+    if (meal) {
+      setEditing(meal)
     } else {
-      // create a temporary meal for new entry
-      setEditing({ id: -1, meal_date: "", meal_time: "", food: "" })
+      setEditing({ id: -1, meal_date: date, meal_time: time, food: "" })
     }
   }
 
-  // Save edited meal
+  // Save meal (create or update)
   const saveEdit = async () => {
     if (!editing) return
     if (editing.id === -1) {
@@ -77,8 +73,8 @@ export default function ViewerPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date: startDate,
-          time: "07:00", // default time, adjust as needed
+          date: editing.meal_date,
+          time: editing.meal_time,
           food: editing.food,
         }),
       })
@@ -137,22 +133,29 @@ export default function ViewerPage() {
         <thead>
           <tr>
             <th>Time</th>
-            {days.map((d) => (
-              <th key={d}>{d}</th>
-            ))}
+            {weekDates.map((date) => {
+              const dayName = new Date(date).toLocaleDateString("en-US", {
+                weekday: "short",
+              })
+              return (
+                <th key={date}>
+                  {dayName} <br /> {date}
+                </th>
+              )
+            })}
           </tr>
         </thead>
         <tbody>
           {times.map((time) => (
             <tr key={time}>
               <td>{time}</td>
-              {days.map((_, dayIndex) => (
+              {weekDates.map((date) => (
                 <td
-                  key={dayIndex}
-                  style={{ cursor: "pointer" }}
-                  onClick={() => openEdit(dayIndex, time)}
+                  key={date}
+                  style={{ cursor: "pointer", minWidth: "100px", padding: "4px" }}
+                  onClick={() => openEditByDate(date, time)}
                 >
-                  {getCell(dayIndex, time)}
+                  {getCell(date, time)}
                 </td>
               ))}
             </tr>
@@ -184,6 +187,9 @@ export default function ViewerPage() {
             }}
           >
             <h3>Edit Meal</h3>
+            <p>
+              {editing.meal_date} {editing.meal_time}
+            </p>
             <textarea
               value={editing.food}
               onChange={(e) =>
