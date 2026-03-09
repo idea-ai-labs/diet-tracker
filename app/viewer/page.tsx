@@ -1,4 +1,4 @@
-"use client"
+no"use client"
 
 import { useEffect, useState } from "react"
 
@@ -125,16 +125,27 @@ export default function ViewerPage() {
         <thead>
           <tr>
             <th>Time</th>
+
             {weekDates.map((date) => {
-              const dayName = new Date(date).toLocaleDateString("en-US", {
-                weekday: "short",
-              })
-              return (
-                <th key={date}>
-                  {dayName} <br /> {date}
-                </th>
-              )
-            })}
+            const localDate = new Date(date + "T00:00:00")
+          
+            const dayName = localDate.toLocaleDateString("en-US", {
+              weekday: "short",
+            })
+          
+            const formattedDate = localDate.toLocaleDateString("en-US", {
+              month: "2-digit",
+              day: "2-digit",
+            })
+          
+            return (
+              <th key={date}>
+                {dayName}
+                <br />
+                {formattedDate}
+              </th>
+            )
+          })}
           </tr>
         </thead>
         <tbody>
