@@ -10,10 +10,15 @@ type Meal = {
 }
 
 export default function ViewerPage() {
-  const [startDate, setStartDate] = useState<string>("")
+  //const [startDate, setStartDate] = useState<string>("")
+  const today = new Date().toISOString().split("T")[0]
+  const [startDate, setStartDate] = useState<string>(today)
   const [data, setData] = useState<Meal[]>([])
   const [editing, setEditing] = useState<Meal | null>(null)
 
+  useEffect(() => {
+  if (startDate) loadGrid()
+}, [startDate])
   // Generate 30-min time slots from 7:00 to 23:30
   const times: string[] = []
   for (let h = 7; h <= 23; h++) {
