@@ -20,3 +20,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   return NextResponse.json({ updated: result.rows[0] })
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  await sql`
+    DELETE FROM meals
+    WHERE id = ${params.id}
+  `
+  return Response.json({ success: true })
+}
