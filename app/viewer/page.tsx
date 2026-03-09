@@ -16,9 +16,7 @@ export default function ViewerPage() {
   const [data, setData] = useState<Meal[]>([])
   const [editing, setEditing] = useState<Meal | null>(null)
 
-  useEffect(() => {
-  if (startDate) loadGrid()
-}, [startDate])
+  
   // Generate 30-min time slots from 7:00 to 23:30
   const times: string[] = []
   for (let h = 7; h <= 23; h++) {
@@ -31,18 +29,33 @@ export default function ViewerPage() {
   }
 
   // Generate 7 dates for the week (Sunday → Saturday) based on startDate
+
   const weekDates: string[] = []
+
   if (startDate) {
-    const start = new Date(startDate)
+  
+    // Parse date safely (no timezone shift)
+    const [y, m, d] = startDate.split("-").map(Number)
+    const start = new Date(y, m - 1, d)
+  
+    // Find Sunday
     const sunday = new Date(start)
-    sunday.setDate(start.getDate() - start.getDay()) // move to Sunday
+    sunday.setDate(start.getDate() - start.getDay())
+  
     for (let i = 0; i < 7; i++) {
-      const d = new Date(sunday)
-      d.setDate(sunday.getDate() + i)
-      weekDates.push(d.toISOString().split("T")[0])
+      const day = new Date(sunday)
+      day.setDate(sunday.getDate() + i)
+  
+      const yyyy = day.getFullYear()
+      const mm = String(day.getMonth() + 1).padStart(2, "0")
+      const dd = String(day.getDate()).padStart(2, "0")
+  
+      weekDates.push(`${yyyy}-${mm}-${dd}`)
     }
   }
-
+  useEffect(() => {
+  if (startDate) loadGrid()
+  }, [startDate])
   // Load meals from API
   async function loadGrid() {
     if (!startDate) return
