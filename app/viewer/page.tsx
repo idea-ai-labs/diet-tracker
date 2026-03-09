@@ -237,17 +237,41 @@ export default function ViewerPage() {
 
                           if (e.key === "Enter") {
 
-                            await fetch("/api/saveMeal", {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                              },
-                              body: JSON.stringify({
-                                date,
-                                time,
-                                food: cellValue,
-                              }),
-                            })
+                            const existing = data.find(
+                              (m) => m.meal_date === date && m.meal_time === time
+                            )
+                            
+                            if (cellValue.trim() === "") {
+                            
+                              // DELETE if empty
+                              if (existing) {
+                                await fetch(`/api/meals/${existing.id}`, {
+                                  method: "DELETE",
+                                })
+                              }
+                            
+                            } else if (existing) {
+                            
+                              // UPDATE existing
+                              await fetch(`/api/meals/${existing.id}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ food: cellValue }),
+                              })
+                            
+                            } else {
+                            
+                              // INSERT new
+                              await fetch("/api/saveMeal", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  date,
+                                  time,
+                                  food: cellValue,
+                                }),
+                              })
+                            }
 
                             setEditingCell(null)
 
