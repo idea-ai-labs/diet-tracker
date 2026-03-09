@@ -15,7 +15,8 @@ export default function ViewerPage() {
   const [startDate, setStartDate] = useState<string>(today)
   const [data, setData] = useState<Meal[]>([])
   const [editing, setEditing] = useState<Meal | null>(null)
-
+  const [editingCell, setEditingCell] = useState<string | null>(null)
+  const [cellValue, setCellValue] = useState("")
   
   // Generate 30-min time slots from 7:00 to 23:30
   const times: string[] = []
@@ -171,13 +172,52 @@ export default function ViewerPage() {
             <tr key={time}>
               <td>{time}</td>
               {weekDates.map((date) => (
-                <td
-                  key={date}
-                  style={{ cursor: "pointer", minWidth: "100px", padding: "4px" }}
-                  onClick={() => openEditByDate(date, time)}
-                >
-                  {getCell(date, time)}
-                </td>
+              const cellId = `${date}-${time}`
+              <td
+                onClick={() => {
+                  const existing = getCell(date, time)
+                  setEditingCell(`${date}-${time}`)
+                  setCellValue(existing)
+                }}
+              >
+              
+              {editingCell === `${date}-${time}` ? (
+              
+              <input
+                autoFocus
+                value={cellValue}
+                onChange={(e) => setCellValue(e.target.value)}
+              
+                onKeyDown={async (e) => {
+                  if (e.key === "Enter") {
+              
+                    await fetch("/api/saveMeal", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json"
+                      },
+                      body: JSON.stringify({
+                        date,
+                        time,
+                        food: cellValue
+                      })
+                    })
+              
+                    setEditingCell(null)
+                    loadGrid()
+                  }
+                }}
+              
+                onBlur={() => setEditingCell(null)}
+              
+                style={{ width: "100%" }}
+              />
+              
+              ) : (
+                getCell(date, time)
+              )}
+              
+              </td>
               ))}
             </tr>
           ))}
