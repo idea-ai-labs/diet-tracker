@@ -6,13 +6,14 @@ export async function POST(req: Request) {
   try {
     const body = await req.json()
     const { query, password } = body
-
+    /*
     if (password !== process.env.SQL_EDITOR_PASSWORD) {
       return NextResponse.json({
         success: false,
         error: "Unauthorized"
       })
     }
+    */
 
     const db = await open({
       filename: "./data.db",
