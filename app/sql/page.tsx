@@ -10,7 +10,7 @@ export default function SqlPage() {
   const [history, setHistory] = useState<string[]>([])
   const [message, setMessage] = useState("")
 
-  const runQuery = async () => {
+  const runQueryOld = async () => {
     if (!query.trim()) return
 
     setError("")
@@ -43,6 +43,42 @@ export default function SqlPage() {
       setMessage("Query executed successfully")
     }
 
+    setHistory((prev) => [query, ...prev.slice(0, 9)])
+  }
+
+  const runQuery = async () => {
+    if (!query.trim()) return
+  
+    setError("")
+    setMessage("Running query...")
+    setResult([])
+  
+    const res = await fetch("/api/sql", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        query,
+        password
+      })
+    })
+  
+    const data = await res.json()
+  
+    if (!data.success) {
+      setError(data.error)
+      setMessage("")
+      return
+    }
+  
+    if (Array.isArray(data.rows)) {
+      setResult(data.rows)
+      setMessage(`Returned ${data.rows.length} rows`)
+    } else {
+      setMessage("Query executed successfully")
+    }
+  
     setHistory((prev) => [query, ...prev.slice(0, 9)])
   }
 
