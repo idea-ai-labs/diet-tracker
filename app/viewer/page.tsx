@@ -18,8 +18,8 @@ export default function ViewerPage() {
   const [cellValue, setCellValue] = useState("")
   const [saving, setSaving] = useState(false)
 
-  const blurHandled = useRef(false)
   const navigatingRef = useRef(false)
+  const blurHandled = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const times: string[] = []
@@ -64,24 +64,15 @@ export default function ViewerPage() {
       .filter(Boolean)
       .join(", ")
 
-  async function saveOrDeleteCell(date: string, time: string, value: string) {
+  async function saveCell(date: string, time: string, value: string) {
     if (saving) return
     setSaving(true)
     try {
-      const clean = value.trim()
-      if (clean === "") {
-        await fetch("/api/deleteMeal", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date, time }),
-        })
-      } else {
-        await fetch("/api/saveMeal", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date, time, food: clean }),
-        })
-      }
+      await fetch("/api/saveMeal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, time, food: value }),
+      })
       await loadGrid()
     } catch (err) {
       console.error(err)
@@ -168,29 +159,25 @@ export default function ViewerPage() {
                           onKeyDown={async (e) => {
                             let nextRow = timeIndex
                             let nextCol = dateIndex
-                            if (e.key === "Enter") nextRow++
-                            if (e.key === "Tab") nextCol++
-                            if (e.key === "ArrowRight") nextCol++
-                            if (e.key === "ArrowLeft") nextCol--
-                            if (e.key === "ArrowDown") nextRow++
-                            if (e.key === "ArrowUp") nextRow--
 
-                            if (nextRow !== timeIndex || nextCol !== dateIndex) {
+                            if (["Enter", "Tab", "ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(e.key)) {
                               e.preventDefault()
+
+                              if (e.key === "Enter" || e.key === "ArrowDown") nextRow++
+                              if (e.key === "Tab" || e.key === "ArrowRight") nextCol++
+                              if (e.key === "ArrowUp") nextRow--
+                              if (e.key === "ArrowLeft") nextCol--
+
                               navigatingRef.current = true
-                              await saveOrDeleteCell(date, time, cellValue)
+                              await saveCell(date, time, cellValue)
                               moveToCell(nextCol, nextRow)
                               navigatingRef.current = false
-                              blurHandled.current = true
-                            } else if (e.key === "Enter") {
-                              e.preventDefault()
-                              await saveOrDeleteCell(date, time, cellValue)
                               blurHandled.current = true
                             }
                           }}
                           onBlur={async () => {
                             if (blurHandled.current || navigatingRef.current) return
-                            await saveOrDeleteCell(date, time, cellValue)
+                            await saveCell(date, time, cellValue)
                             blurHandled.current = true
                           }}
                           style={{ width: "100%", padding: "4px", border: "1px solid #1976d2" }}
