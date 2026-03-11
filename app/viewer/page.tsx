@@ -18,6 +18,7 @@ export default function ViewerPage() {
   const [cellValue, setCellValue] = useState("")
   const [saving, setSaving] = useState(false)
 
+  const blurHandled = useRef(false)
   const navigatingRef = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -86,6 +87,8 @@ export default function ViewerPage() {
       console.error(err)
     } finally {
       setSaving(false)
+      setEditingCell(null)
+      blurHandled.current = false
     }
   }
 
@@ -153,6 +156,7 @@ export default function ViewerPage() {
                         if (saving) return
                         setEditingCell(cellId)
                         setCellValue(cellContent)
+                        blurHandled.current = false
                       }}
                     >
                       {editingCell === cellId ? (
@@ -177,12 +181,17 @@ export default function ViewerPage() {
                               await saveOrDeleteCell(date, time, cellValue)
                               moveToCell(nextCol, nextRow)
                               navigatingRef.current = false
+                              blurHandled.current = true
+                            } else if (e.key === "Enter") {
+                              e.preventDefault()
+                              await saveOrDeleteCell(date, time, cellValue)
+                              blurHandled.current = true
                             }
                           }}
                           onBlur={async () => {
-                            if (navigatingRef.current) return
+                            if (blurHandled.current || navigatingRef.current) return
                             await saveOrDeleteCell(date, time, cellValue)
-                            setEditingCell(null)
+                            blurHandled.current = true
                           }}
                           style={{ width: "100%", padding: "4px", border: "1px solid #1976d2" }}
                         />
