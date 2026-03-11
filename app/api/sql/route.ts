@@ -6,6 +6,15 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { query } = body
 
+    // Password check
+  if (password !== process.env.SQL_EDITOR_PASSWORD) {
+    return Response.json({
+      success: false,
+      error: "Unauthorized"
+    })
+  }
+
+
     const result = await sql.query(query)
 
     return NextResponse.json({
