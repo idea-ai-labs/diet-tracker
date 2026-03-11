@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 
 type Meal = {
   id: number
@@ -18,6 +18,8 @@ export default function ViewerPage() {
   const [editingCell, setEditingCell] = useState<string | null>(null)
   const [cellValue, setCellValue] = useState("")
   const [saving, setSaving] = useState(false)
+
+  const navigatingRef = useRef(false)
 
   const times: string[] = []
 
@@ -55,9 +57,7 @@ export default function ViewerPage() {
   }
 
   useEffect(() => {
-
     if (startDate) loadGrid()
-
   }, [startDate])
 
   async function loadGrid() {
@@ -105,13 +105,11 @@ export default function ViewerPage() {
 
       }
 
-      setEditingCell(null)
-
       await loadGrid()
 
     } catch (err) {
 
-      console.error("Save error:", err)
+      console.error(err)
 
     } finally {
 
@@ -138,23 +136,13 @@ export default function ViewerPage() {
 
   return (
 
-    <div style={{
-      padding: "30px",
-      fontFamily: "Arial",
-      maxWidth: "1200px",
-      margin: "auto"
-    }}>
+    <div style={{ padding: 30, fontFamily: "Arial", maxWidth: 1200, margin: "auto" }}>
 
-      <h1 style={{ textAlign: "center", marginBottom: "30px" }}>
+      <h1 style={{ textAlign: "center", marginBottom: 30 }}>
         Weekly Diet Tracker
       </h1>
 
-      <div style={{
-        marginBottom: "20px",
-        display: "flex",
-        gap: "15px",
-        alignItems: "center"
-      }}>
+      <div style={{ marginBottom: 20, display: "flex", gap: 15, alignItems: "center" }}>
 
         <label style={{ fontWeight: "bold" }}>
           Start Date
@@ -164,11 +152,7 @@ export default function ViewerPage() {
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          style={{
-            padding: "6px 10px",
-            borderRadius: "6px",
-            border: "1px solid #ccc"
-          }}
+          style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #ccc" }}
         />
 
         <button
@@ -178,7 +162,7 @@ export default function ViewerPage() {
             backgroundColor: "#1976d2",
             color: "#fff",
             border: "none",
-            borderRadius: "6px",
+            borderRadius: 6,
             cursor: "pointer"
           }}
         >
@@ -187,31 +171,15 @@ export default function ViewerPage() {
 
       </div>
 
-      <div style={{
-        overflowX: "auto",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        borderRadius: "8px"
-      }}>
+      <div style={{ overflowX: "auto", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", borderRadius: 8 }}>
 
-        <table style={{
-          borderCollapse: "collapse",
-          width: "100%",
-          minWidth: "700px"
-        }}>
+        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 700 }}>
 
-          <thead style={{
-            backgroundColor: "#1976d2",
-            color: "#fff"
-          }}>
+          <thead style={{ backgroundColor: "#1976d2", color: "#fff" }}>
 
             <tr>
 
-              <th style={{
-                padding: "10px",
-                position: "sticky",
-                left: 0,
-                backgroundColor: "#1976d2"
-              }}>
+              <th style={{ padding: 10 }}>
                 Time
               </th>
 
@@ -224,7 +192,7 @@ export default function ViewerPage() {
                 const formattedDate = localDate.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit" })
 
                 return (
-                  <th key={date} style={{ padding: "10px" }}>
+                  <th key={date} style={{ padding: 10 }}>
                     {dayName}
                     <br />
                     {formattedDate}
@@ -241,16 +209,9 @@ export default function ViewerPage() {
 
             {times.map((time, timeIndex) => (
 
-              <tr key={time} style={{ backgroundColor: "#fafafa" }}>
+              <tr key={time}>
 
-                <td style={{
-                  padding: "8px",
-                  fontWeight: "bold",
-                  position: "sticky",
-                  left: 0,
-                  backgroundColor: "#f0f0f0",
-                  borderRight: "1px solid #ccc"
-                }}>
+                <td style={{ padding: 8, fontWeight: "bold", background: "#f0f0f0" }}>
                   {time}
                 </td>
 
@@ -269,17 +230,14 @@ export default function ViewerPage() {
                         if (saving) return
 
                         setEditingCell(cellId)
-
                         setCellValue(cellContent)
 
                       }}
                       style={{
-                        padding: "6px",
+                        padding: 6,
                         border: "1px solid #ddd",
                         cursor: "pointer",
-                        minWidth: "120px",
-                        backgroundColor:
-                          editingCell === cellId ? "#fff9c4" : "#fff"
+                        backgroundColor: editingCell === cellId ? "#fff9c4" : "#fff"
                       }}
                     >
 
@@ -287,88 +245,53 @@ export default function ViewerPage() {
 
                         <input
                           autoFocus
-                          disabled={saving}
                           value={cellValue}
+                          disabled={saving}
+
                           onChange={(e) => setCellValue(e.target.value)}
 
                           onKeyDown={async (e) => {
 
-                            if (e.key === "Enter") {
+                            let nextRow = timeIndex
+                            let nextCol = dateIndex
+
+                            if (e.key === "Enter") nextRow++
+                            if (e.key === "Tab") nextCol++
+                            if (e.key === "ArrowRight") nextCol++
+                            if (e.key === "ArrowLeft") nextCol--
+                            if (e.key === "ArrowDown") nextRow++
+                            if (e.key === "ArrowUp") nextRow--
+
+                            if (nextRow !== timeIndex || nextCol !== dateIndex) {
 
                               e.preventDefault()
 
-                              await saveOrDeleteCell(date, time)
-
-                              moveToCell(dateIndex, timeIndex + 1)
-
-                            }
-
-                            if (e.key === "Tab") {
-
-                              e.preventDefault()
+                              navigatingRef.current = true
 
                               await saveOrDeleteCell(date, time)
 
-                              moveToCell(dateIndex + 1, timeIndex)
+                              moveToCell(nextCol, nextRow)
 
-                            }
-
-                            if (e.key === "ArrowRight") {
-
-                              e.preventDefault()
-
-                              await saveOrDeleteCell(date, time)
-
-                              moveToCell(dateIndex + 1, timeIndex)
-
-                            }
-
-                            if (e.key === "ArrowLeft") {
-
-                              e.preventDefault()
-
-                              await saveOrDeleteCell(date, time)
-
-                              moveToCell(dateIndex - 1, timeIndex)
-
-                            }
-
-                            if (e.key === "ArrowDown") {
-
-                              e.preventDefault()
-
-                              await saveOrDeleteCell(date, time)
-
-                              moveToCell(dateIndex, timeIndex + 1)
-
-                            }
-
-                            if (e.key === "ArrowUp") {
-
-                              e.preventDefault()
-
-                              await saveOrDeleteCell(date, time)
-
-                              moveToCell(dateIndex, timeIndex - 1)
+                              navigatingRef.current = false
 
                             }
 
                           }}
 
-                          onBlur={() => {
+                          onBlur={async () => {
 
-                            if (editingCell === cellId) {
+                            if (navigatingRef.current) return
 
-                              saveOrDeleteCell(date, time)
+                            await saveOrDeleteCell(date, time)
 
-                            }
+                            setEditingCell(null)
 
                           }}
 
                           style={{
                             width: "100%",
                             padding: "4px 6px",
-                            borderRadius: "4px",
+                            borderRadius: 4,
                             border: "1px solid #1976d2"
                           }}
                         />
