@@ -16,9 +16,9 @@ export default function ViewerPage() {
   const [startDate, setStartDate] = useState(today)
   const [data, setData] = useState<Meal[]>([])
   const [editingCell, setEditingCell] = useState<string | null>(null)
-  const [cellValue, setCellValue] = useState("")
   const [saving, setSaving] = useState(false)
 
+  const inputRef = useRef<HTMLInputElement>(null)
   const navigatingRef = useRef(false)
 
   const times: string[] = []
@@ -77,7 +77,7 @@ export default function ViewerPage() {
       .filter(Boolean)
       .join(", ")
 
-  async function saveOrDeleteCell(date: string, time: string) {
+  async function saveOrDeleteCell(date: string, time: string, value: string) {
 
     if (saving) return
 
@@ -85,9 +85,9 @@ export default function ViewerPage() {
 
     try {
 
-      const value = cellValue.trim()
+      const clean = value.trim()
 
-      if (value === "") {
+      if (clean === "") {
 
         await fetch("/api/deleteMeal", {
           method: "POST",
@@ -100,7 +100,7 @@ export default function ViewerPage() {
         await fetch("/api/saveMeal", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date, time, food: value })
+          body: JSON.stringify({ date, time, food: clean })
         })
 
       }
@@ -128,10 +128,6 @@ export default function ViewerPage() {
 
     setEditingCell(newCell)
 
-    const value = getCell(weekDates[dateIndex], times[timeIndex])
-
-    setCellValue(value)
-
   }
 
   return (
@@ -142,7 +138,7 @@ export default function ViewerPage() {
         Weekly Diet Tracker
       </h1>
 
-      <div style={{ marginBottom: 20, display: "flex", gap: 15, alignItems: "center" }}>
+      <div style={{ marginBottom: 20, display: "flex", gap: 15 }}>
 
         <label style={{ fontWeight: "bold" }}>
           Start Date
@@ -152,30 +148,19 @@ export default function ViewerPage() {
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #ccc" }}
         />
 
-        <button
-          onClick={loadGrid}
-          style={{
-            padding: "7px 15px",
-            backgroundColor: "#1976d2",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer"
-          }}
-        >
+        <button onClick={loadGrid}>
           Show Week
         </button>
 
       </div>
 
-      <div style={{ overflowX: "auto", boxShadow: "0 2px 8px rgba(0,0,0,0.1)", borderRadius: 8 }}>
+      <div style={{ overflowX: "auto" }}>
 
-        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 700 }}>
+        <table style={{ borderCollapse: "collapse", width: "100%" }}>
 
-          <thead style={{ backgroundColor: "#1976d2", color: "#fff" }}>
+          <thead style={{ background: "#1976d2", color: "#fff" }}>
 
             <tr>
 
@@ -187,15 +172,14 @@ export default function ViewerPage() {
 
                 const localDate = new Date(date + "T00:00:00")
 
-                const dayName = localDate.toLocaleDateString("en-US", { weekday: "short" })
-
-                const formattedDate = localDate.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit" })
+                const day = localDate.toLocaleDateString("en-US", { weekday: "short" })
+                const d = localDate.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit" })
 
                 return (
-                  <th key={date} style={{ padding: 10 }}>
-                    {dayName}
+                  <th key={date}>
+                    {day}
                     <br />
-                    {formattedDate}
+                    {d}
                   </th>
                 )
 
@@ -211,7 +195,7 @@ export default function ViewerPage() {
 
               <tr key={time}>
 
-                <td style={{ padding: 8, fontWeight: "bold", background: "#f0f0f0" }}>
+                <td style={{ fontWeight: "bold", background: "#f0f0f0" }}>
                   {time}
                 </td>
 
@@ -225,30 +209,26 @@ export default function ViewerPage() {
 
                     <td
                       key={cellId}
+                      style={{
+                        border: "1px solid #ddd",
+                        padding: 6,
+                        cursor: "pointer"
+                      }}
                       onClick={() => {
 
                         if (saving) return
 
                         setEditingCell(cellId)
-                        setCellValue(cellContent)
 
-                      }}
-                      style={{
-                        padding: 6,
-                        border: "1px solid #ddd",
-                        cursor: "pointer",
-                        backgroundColor: editingCell === cellId ? "#fff9c4" : "#fff"
                       }}
                     >
 
                       {editingCell === cellId ? (
 
                         <input
+                          ref={inputRef}
                           autoFocus
-                          value={cellValue}
-                          disabled={saving}
-
-                          onChange={(e) => setCellValue(e.target.value)}
+                          defaultValue={cellContent}
 
                           onKeyDown={async (e) => {
 
@@ -268,7 +248,9 @@ export default function ViewerPage() {
 
                               navigatingRef.current = true
 
-                              await saveOrDeleteCell(date, time)
+                              const value = inputRef.current?.value || ""
+
+                              await saveOrDeleteCell(date, time, value)
 
                               moveToCell(nextCol, nextRow)
 
@@ -282,7 +264,9 @@ export default function ViewerPage() {
 
                             if (navigatingRef.current) return
 
-                            await saveOrDeleteCell(date, time)
+                            const value = inputRef.current?.value || ""
+
+                            await saveOrDeleteCell(date, time, value)
 
                             setEditingCell(null)
 
@@ -290,8 +274,6 @@ export default function ViewerPage() {
 
                           style={{
                             width: "100%",
-                            padding: "4px 6px",
-                            borderRadius: 4,
                             border: "1px solid #1976d2"
                           }}
                         />
