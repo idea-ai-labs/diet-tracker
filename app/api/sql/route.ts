@@ -4,15 +4,15 @@ import { sql } from "@vercel/postgres"
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { query } = body
+    const { query, password } = body
 
     // Password check
-  if (password !== process.env.SQL_EDITOR_PASSWORD) {
-    return Response.json({
-      success: false,
-      error: "Unauthorized"
-    })
-  }
+    if (password !== process.env.SQL_EDITOR_PASSWORD) {
+      return Response.json({
+        success: false,
+        error: "Unauthorized"
+      })
+    }
 
 
     const result = await sql.query(query)
