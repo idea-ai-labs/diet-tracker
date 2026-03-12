@@ -1,6 +1,19 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js"
+import { Line } from "react-chartjs-2"
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
 
 interface BPRecord {
   id: number
@@ -14,11 +27,9 @@ interface BPRecord {
 export default function BPPage() {
   const ET = "America/New_York"
 
-  // ---------- Default readingTime in ET ----------
+  // ---------- Helper to get current ET string for datetime-local ----------
   function getETNowString(): string {
     const now = new Date()
-
-    // Convert to locale string in ET
     const etParts = now
       .toLocaleString("en-US", {
         timeZone: ET,
@@ -27,15 +38,15 @@ export default function BPPage() {
         day: "2-digit",
         hour: "2-digit",
         minute: "2-digit",
-        hour12: false, // 24-hour format
+        hour12: false,
       })
-      .match(/\d+/g) // extract numbers
+      .match(/\d+/g)
     if (!etParts) return now.toISOString().slice(0, 16)
-
     const [month, day, year, hour, minute] = etParts
     return `${year}-${month}-${day}T${hour}:${minute}`
   }
 
+  // ---------- State ----------
   const [readingTime, setReadingTime] = useState(getETNowString)
   const [records, setRecords] = useState<BPRecord[]>([])
   const [systolic, setSystolic] = useState("")
@@ -43,6 +54,8 @@ export default function BPPage() {
   const [heartRate, setHeartRate] = useState("")
   const [comments, setComments] = useState("")
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
 
   // ---------- Load Records ----------
   async function loadRecords() {
@@ -77,7 +90,6 @@ export default function BPPage() {
   // ---------- Save Record ----------
   async function saveRecord() {
     if (!systolic || !diastolic) return
-
     const payload = {
       reading_time: readingTime,
       systolic: Number(systolic),
@@ -107,7 +119,6 @@ export default function BPPage() {
   // ---------- Edit Record ----------
   function editRecord(r: BPRecord) {
     setEditingId(r.id)
-    // Convert UTC/DB time to datetime-local string
     const etDate = new Date(r.reading_time).toLocaleString("en-US", {
       timeZone: ET,
       year: "numeric",
@@ -135,6 +146,58 @@ export default function BPPage() {
       body: JSON.stringify({ id }),
     })
     loadRecords()
+  }
+
+  // ---------- Filter records for chart ----------
+  const chartRecords = records.filter((r) => {
+    if (startDate && new Date(r.reading_time) < new Date(startDate)) return false
+    if (endDate && new Date(r.reading_time) > new Date(endDate)) return false
+    return true
+  })
+
+  // ---------- Prepare chart data ----------
+  const chartData = {
+    labels: chartRecords.map((r) =>
+      new Date(r.reading_time).toLocaleString("en-US", {
+        timeZone: ET,
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
+    ),
+    datasets: [
+      {
+        label: "Systolic",
+        data: chartRecords.map((r) => r.systolic),
+        borderColor: "#1976d2",
+        backgroundColor: "rgba(25,118,210,0.2)",
+        tension: 0.3,
+      },
+      {
+        label: "Diastolic",
+        data: chartRecords.map((r) => r.diastolic),
+        borderColor: "#43a047",
+        backgroundColor: "rgba(67,160,71,0.2)",
+        tension: 0.3,
+      },
+      {
+        label: "Heart Rate",
+        data: chartRecords.map((r) => r.heart_rate),
+        borderColor: "#fbc02d",
+        backgroundColor: "rgba(251,192,45,0.2)",
+        tension: 0.3,
+      },
+    ],
+  }
+
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: { position: "top" as const },
+      title: { display: true, text: "BP Trend" },
+    },
   }
 
   // ---------- UI ----------
@@ -255,6 +318,30 @@ export default function BPPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* BP Trend Chart */}
+      <div className="card">
+        <h2>BP Trend</h2>
+        <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+          <div>
+            <label>Start Date:</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label>End Date:</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+        </div>
+        <Line data={chartData} options={chartOptions} />
       </div>
     </div>
   )
