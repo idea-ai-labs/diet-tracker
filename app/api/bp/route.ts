@@ -14,16 +14,17 @@ export async function GET() {
 
 export async function POST(req: Request) {
 
-  const { systolic, diastolic, heartRate, comments } = await req.json()
+  const { reading_time, systolic, diastolic, heartRate, comments } = await req.json()
 
   await sql`
     INSERT INTO blood_pressure
-    (systolic, diastolic, heart_rate, comments)
+    (reading_time, systolic, diastolic, heart_rate, comments)
     VALUES
-    (${systolic}, ${diastolic}, ${heartRate}, ${comments})
+    (${reading_time}, ${systolic}, ${diastolic}, ${heartRate}, ${comments})
   `
 
   return Response.json({ success: true })
+
 }
 
 export async function DELETE(req: Request) {
