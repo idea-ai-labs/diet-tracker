@@ -8,7 +8,7 @@ return(
 
 <body>
 
-<h1 style={{textAlign:"center"}}>Diet Tracker</h1>
+<h1 style={{textAlign:"center"}}>Personal Health Dashboard</h1>
 
 {children}
 
