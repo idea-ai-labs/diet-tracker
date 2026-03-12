@@ -25,3 +25,17 @@ export async function POST(req: Request) {
 
   return Response.json({ success: true })
 }
+
+export async function DELETE(req: Request) {
+
+  const { searchParams } = new URL(req.url)
+
+  const id = searchParams.get("id")
+
+  await sql`
+    DELETE FROM blood_pressure
+    WHERE id=${id}
+  `
+
+  return Response.json({ success: true })
+}
