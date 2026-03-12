@@ -9,7 +9,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const navItems = [
     { name: "Home", href: "/" },
     { name: "Diet Tracker", href: "/viewer" },
-    { name: "Health Summary", href: "/health" },
+    { name: "Health Summary", href: "/health-summary" },
     { name: "Blood Pressure", href: "/bp" },
   ];
 
