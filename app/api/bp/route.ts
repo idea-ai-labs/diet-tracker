@@ -40,3 +40,21 @@ export async function DELETE(req: Request) {
 
   return Response.json({ success: true })
 }
+
+export async function PUT(req: Request) {
+  const { id, reading_time, systolic, diastolic, heartRate, comments } =
+    await req.json()
+
+  await sql`
+    UPDATE blood_pressure
+    SET
+      reading_time = ${reading_time},  -- ✅ important to include this
+      systolic = ${systolic},
+      diastolic = ${diastolic},
+      heart_rate = ${heartRate},
+      comments = ${comments}
+    WHERE id = ${id}
+  `
+
+  return Response.json({ success: true })
+}
