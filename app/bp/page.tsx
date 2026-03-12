@@ -15,20 +15,28 @@ export default function BPPage() {
   const ET = "America/New_York"
 
   // ---------- Default readingTime in ET ----------
-  const [readingTime, setReadingTime] = useState(() => {
+  function getETNowString(): string {
     const now = new Date()
-    const etString = now.toLocaleString("en-US", { timeZone: ET })
-    const [datePart, timePart] = etString.split(", ")
-    const [month, day, year] = datePart.split("/")
-    const [hour, minute] = timePart.split(":")
-    let hour24 = parseInt(hour, 10)
-    if (timePart.includes("PM") && hour24 !== 12) hour24 += 12
-    if (timePart.includes("AM") && hour24 === 12) hour24 = 0
-    const hh = String(hour24).padStart(2, "0")
-    const mm = String(minute).padStart(2, "0")
-    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${hh}:${mm}`
-  })
 
+    // Convert to locale string in ET
+    const etParts = now
+      .toLocaleString("en-US", {
+        timeZone: ET,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false, // 24-hour format
+      })
+      .match(/\d+/g) // extract numbers
+    if (!etParts) return now.toISOString().slice(0, 16)
+
+    const [month, day, year, hour, minute] = etParts
+    return `${year}-${month}-${day}T${hour}:${minute}`
+  }
+
+  const [readingTime, setReadingTime] = useState(getETNowString)
   const [records, setRecords] = useState<BPRecord[]>([])
   const [systolic, setSystolic] = useState("")
   const [diastolic, setDiastolic] = useState("")
@@ -58,18 +66,7 @@ export default function BPPage() {
 
   // ---------- Reset Form ----------
   function resetForm() {
-    const now = new Date()
-    const etString = now.toLocaleString("en-US", { timeZone: ET })
-    const [datePart, timePart] = etString.split(", ")
-    const [month, day, year] = datePart.split("/")
-    const [hour, minute] = timePart.split(":")
-    let hour24 = parseInt(hour, 10)
-    if (timePart.includes("PM") && hour24 !== 12) hour24 += 12
-    if (timePart.includes("AM") && hour24 === 12) hour24 = 0
-    const hh = String(hour24).padStart(2, "0")
-    const mm = String(minute).padStart(2, "0")
-    setReadingTime(`${year}-${month.padStart(2,"0")}-${day.padStart(2,"0")}T${hh}:${mm}`)
-
+    setReadingTime(getETNowString())
     setSystolic("")
     setDiastolic("")
     setHeartRate("")
@@ -110,7 +107,20 @@ export default function BPPage() {
   // ---------- Edit Record ----------
   function editRecord(r: BPRecord) {
     setEditingId(r.id)
-    setReadingTime(new Date(r.reading_time).toISOString().slice(0, 16))
+    // Convert UTC/DB time to datetime-local string
+    const etDate = new Date(r.reading_time).toLocaleString("en-US", {
+      timeZone: ET,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).match(/\d+/g)
+    if (etDate) {
+      const [month, day, year, hour, minute] = etDate
+      setReadingTime(`${year}-${month}-${day}T${hour}:${minute}`)
+    }
     setSystolic(String(r.systolic))
     setDiastolic(String(r.diastolic))
     setHeartRate(String(r.heart_rate || ""))
@@ -230,10 +240,7 @@ export default function BPPage() {
                 <td>{r.heart_rate}</td>
                 <td>{r.comments}</td>
                 <td>
-                  <button
-                    className="secondary"
-                    onClick={() => editRecord(r)}
-                  >
+                  <button className="secondary" onClick={() => editRecord(r)}>
                     Edit
                   </button>
                   <button
