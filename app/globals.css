@@ -30,6 +30,10 @@ html, body {
   position: sticky;
   top: 0;
   z-index: 100;
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .header h1 {
@@ -37,20 +41,32 @@ html, body {
   font-weight: 600;
 }
 
+/* -------- Navigation -------- */
+
 .nav {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
-  gap: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .nav a {
   text-decoration: none;
   color: #555;
   font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .nav a:hover {
+  background-color: #e3f2fd;
   color: #1976d2;
+}
+
+.nav a.active-link {
+  background-color: #1976d2;
+  color: white;
 }
 
 /* -------- Cards -------- */
@@ -73,7 +89,7 @@ input, select {
   font-size: 14px;
 }
 
-input:focus {
+input:focus, select:focus {
   outline: none;
   border-color: #1976d2;
 }
@@ -140,27 +156,6 @@ tbody tr:hover {
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
-/* Navigation links */
-.nav a {
-  text-decoration: none;
-  color: #555;
-  font-size: 14px;
-  margin-right: 16px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  transition: background 0.2s, color 0.2s;
-}
-
-.nav a:hover {
-  background-color: #e3f2fd;
-  color: #1976d2;
-}
-
-/* Highlight active page */
-.nav a.active-link {
-  background-color: #1976d2;
-  color: white;
-}
 
 /* -------- Responsive -------- */
 
@@ -171,8 +166,11 @@ tbody tr:hover {
   }
 
   .nav {
-    flex-wrap: wrap;
-    gap: 12px;
+    gap: 10px;
+  }
+
+  .nav a {
+    font-size: 13px;
   }
 
   th, td {
