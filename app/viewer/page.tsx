@@ -2,6 +2,13 @@
 
 import { useEffect, useState, useRef } from "react"
 
+function formatTime12(time: string) {
+  const [h, m] = time.split(":").map(Number)
+  const period = h >= 12 ? "PM" : "AM"
+  const hour12 = h % 12 === 0 ? 12 : h % 12
+  return `${hour12}:${m.toString().padStart(2, "0")} ${period}`
+}
+
 type Meal = {
   id: number
   meal_date: string
@@ -129,7 +136,10 @@ export default function ViewerPage() {
           <tbody>
             {times.map((time, timeIndex) => (
               <tr key={time}>
-                <td style={{ fontWeight: "bold", background: "#f0f0f0", padding: 8 }}>{time}</td>
+ 
+                <td style={{ fontWeight: "bold", background: "#f0f0f0", padding: 8 }}>
+  {formatTime12(time)}
+</td>
                 {weekDates.map((date, dateIndex) => {
                   const cellId = `${date}-${time}`
                   const cellContent = getCell(date, time)
