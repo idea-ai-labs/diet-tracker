@@ -179,7 +179,7 @@ export default function BPPage() {
         <table>
           <thead>
             <tr>
-              <th>Date</th>
+              <th>Date (ET)</th>
               <th>Tag</th>
               <th>Systolic</th>
               <th>Diastolic</th>
@@ -191,8 +191,18 @@ export default function BPPage() {
           <tbody>
             {records.map((r) => (
               <tr key={r.id}>
-
-                <td>{new Date(r.reading_time).toLocaleString("en-US", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: true })}</td>
+                {/* ✅ Convert reading_time to Eastern Time */}
+                <td>
+                  {new Date(r.reading_time).toLocaleString("en-US", {
+                    timeZone: "America/New_York",
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </td>
                 <td>{getTag(r.reading_time)}</td>
                 <td>{r.systolic}</td>
                 <td>{r.diastolic}</td>
