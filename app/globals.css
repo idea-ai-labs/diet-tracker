@@ -140,6 +140,27 @@ tbody tr:hover {
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
+/* Navigation links */
+.nav a {
+  text-decoration: none;
+  color: #555;
+  font-size: 14px;
+  margin-right: 16px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.nav a:hover {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+/* Highlight active page */
+.nav a.active-link {
+  background-color: #1976d2;
+  color: white;
+}
 
 /* -------- Responsive -------- */
 
