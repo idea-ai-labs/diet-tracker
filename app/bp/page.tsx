@@ -12,16 +12,28 @@ interface BPRecord {
 }
 
 export default function BPPage() {
-  const [records, setRecords] = useState<BPRecord[]>([])
+  const ET = "America/New_York"
 
-  const [readingTime, setReadingTime] = useState(
-    new Date().toISOString().slice(0, 16)
-  )
+  // ---------- Default readingTime in ET ----------
+  const [readingTime, setReadingTime] = useState(() => {
+    const now = new Date()
+    const etString = now.toLocaleString("en-US", { timeZone: ET })
+    const [datePart, timePart] = etString.split(", ")
+    const [month, day, year] = datePart.split("/")
+    const [hour, minute] = timePart.split(":")
+    let hour24 = parseInt(hour, 10)
+    if (timePart.includes("PM") && hour24 !== 12) hour24 += 12
+    if (timePart.includes("AM") && hour24 === 12) hour24 = 0
+    const hh = String(hour24).padStart(2, "0")
+    const mm = String(minute).padStart(2, "0")
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${hh}:${mm}`
+  })
+
+  const [records, setRecords] = useState<BPRecord[]>([])
   const [systolic, setSystolic] = useState("")
   const [diastolic, setDiastolic] = useState("")
   const [heartRate, setHeartRate] = useState("")
   const [comments, setComments] = useState("")
-
   const [editingId, setEditingId] = useState<number | null>(null)
 
   // ---------- Load Records ----------
@@ -46,7 +58,18 @@ export default function BPPage() {
 
   // ---------- Reset Form ----------
   function resetForm() {
-    setReadingTime(new Date().toISOString().slice(0, 16))
+    const now = new Date()
+    const etString = now.toLocaleString("en-US", { timeZone: ET })
+    const [datePart, timePart] = etString.split(", ")
+    const [month, day, year] = datePart.split("/")
+    const [hour, minute] = timePart.split(":")
+    let hour24 = parseInt(hour, 10)
+    if (timePart.includes("PM") && hour24 !== 12) hour24 += 12
+    if (timePart.includes("AM") && hour24 === 12) hour24 = 0
+    const hh = String(hour24).padStart(2, "0")
+    const mm = String(minute).padStart(2, "0")
+    setReadingTime(`${year}-${month.padStart(2,"0")}-${day.padStart(2,"0")}T${hh}:${mm}`)
+
     setSystolic("")
     setDiastolic("")
     setHeartRate("")
@@ -59,7 +82,7 @@ export default function BPPage() {
     if (!systolic || !diastolic) return
 
     const payload = {
-      reading_time: readingTime, // ✅ Pass reading time
+      reading_time: readingTime,
       systolic: Number(systolic),
       diastolic: Number(diastolic),
       heartRate: Number(heartRate),
@@ -119,7 +142,6 @@ export default function BPPage() {
             marginTop: "10px",
           }}
         >
-          {/* Entry Time */}
           <div>
             <label>Entry Time</label>
             <input
@@ -191,10 +213,9 @@ export default function BPPage() {
           <tbody>
             {records.map((r) => (
               <tr key={r.id}>
-                {/* ✅ Convert reading_time to Eastern Time */}
                 <td>
                   {new Date(r.reading_time).toLocaleString("en-US", {
-                    timeZone: "America/New_York",
+                    timeZone: ET,
                     year: "numeric",
                     month: "2-digit",
                     day: "2-digit",
