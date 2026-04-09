@@ -8,10 +8,12 @@ export default function LoginPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError("")
+    setLoading(true)
 
     try {
       const res = await fetch("/api/login", {
@@ -22,13 +24,16 @@ export default function LoginPage() {
 
       const data = await res.json()
 
-      if (data.success) {
-        router.push("/") // redirect to dashboard after login
+      setLoading(false)
+
+      if (res.ok && data.success) {
+        router.push("/") // Redirect after successful login
       } else {
         setError("Invalid username or password")
       }
     } catch (err) {
       console.error(err)
+      setLoading(false)
       setError("Something went wrong. Please try again.")
     }
   }
@@ -46,10 +51,14 @@ export default function LoginPage() {
     >
       <h2 style={{ textAlign: "center", marginBottom: "24px" }}>Login</h2>
 
-      <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        {/* Username */}
+      <form
+        onSubmit={handleLogin}
+        style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+      >
         <div>
-          <label htmlFor="username" style={{ display: "block", marginBottom: "4px" }}>Username</label>
+          <label htmlFor="username" style={{ display: "block", marginBottom: "4px" }}>
+            Username
+          </label>
           <input
             id="username"
             type="text"
@@ -59,9 +68,10 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* Password */}
         <div>
-          <label htmlFor="password" style={{ display: "block", marginBottom: "4px" }}>Password</label>
+          <label htmlFor="password" style={{ display: "block", marginBottom: "4px" }}>
+            Password
+          </label>
           <input
             id="password"
             type="password"
@@ -71,10 +81,10 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* Submit */}
-        <button type="submit">Login</button>
+        <button type="submit" disabled={loading}>
+          {loading ? "Logging in..." : "Login"}
+        </button>
 
-        {/* Error */}
         {error && <p style={{ color: "red", marginTop: "8px" }}>{error}</p>}
       </form>
     </div>
