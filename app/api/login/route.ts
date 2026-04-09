@@ -5,19 +5,19 @@ export async function POST(req: Request){
   const { password } = await req.json()
 
   if(password !== process.env.SQL_EDITOR_PASSWORD){
-
-    return Response.json({ success:false })
-
+    return NextResponse.json({ success:false })
   }
 
   const response = NextResponse.json({ success:true })
 
-  response.cookies.set("site_auth","1",{
-    httpOnly:true,
-    secure:true,
-    path:"/"
+  response.cookies.set({
+    name: "site_auth",
+    value: "1",
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/"
   })
 
   return response
-
 }
