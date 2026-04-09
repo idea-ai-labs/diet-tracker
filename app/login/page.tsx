@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
   const router = useRouter()
+
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -12,7 +13,8 @@ export default function LoginPage() {
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    setError("")
+
+    setError("") // clear previous error
     setLoading(true)
 
     try {
@@ -26,66 +28,71 @@ export default function LoginPage() {
 
       setLoading(false)
 
-      if (res.ok && data.success) {
-        router.push("/") // Redirect after successful login
+      if (data.success) {
+        router.push("/")
       } else {
         setError("Invalid username or password")
       }
+
     } catch (err) {
-      console.error(err)
       setLoading(false)
-      setError("Something went wrong. Please try again.")
+      setError("Server error. Please try again.")
     }
   }
 
   return (
     <div
       style={{
-        maxWidth: "400px",
+        maxWidth: "420px",
         margin: "100px auto",
         padding: "24px",
-        borderRadius: "10px",
+        borderRadius: "12px",
         background: "white",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
       }}
     >
-      <h2 style={{ textAlign: "center", marginBottom: "24px" }}>Login</h2>
+      <h2 style={{ textAlign: "center", marginBottom: "20px" }}>
+        Login
+      </h2>
 
-      <form
-        onSubmit={handleLogin}
-        style={{ display: "flex", flexDirection: "column", gap: "16px" }}
-      >
-        <div>
-          <label htmlFor="username" style={{ display: "block", marginBottom: "4px" }}>
-            Username
-          </label>
-          <input
-            id="username"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
+      {/* 🔴 TOP ERROR BANNER */}
+      {error && (
+        <div
+          style={{
+            background: "#ffe5e5",
+            color: "#b00020",
+            padding: "10px 12px",
+            borderRadius: "8px",
+            marginBottom: "16px",
+            fontSize: "14px",
+            border: "1px solid #ffb3b3",
+          }}
+        >
+          {error}
         </div>
+      )}
 
-        <div>
-          <label htmlFor="password" style={{ display: "block", marginBottom: "4px" }}>
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+      <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        
+        <input
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
 
         <button type="submit" disabled={loading}>
           {loading ? "Logging in..." : "Login"}
         </button>
 
-        {error && <p style={{ color: "red", marginTop: "8px" }}>{error}</p>}
       </form>
     </div>
   )
