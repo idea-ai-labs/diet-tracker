@@ -4,64 +4,53 @@ import { NextResponse } from "next/server"
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
-    const { username, password } = body
-
-    console.log("LOGIN ATTEMPT:", username)
+    const { username, password } = await req.json()
 
     const { rows } = await sql`
-      SELECT id, password, role FROM users WHERE username=${username}
+      SELECT id, password, role
+      FROM users
+      WHERE username=${username}
     `
 
-    console.log("DB ROWS:", rows)
-
-    // 1️⃣ DB user found
-    if (rows.length > 0) {
-      const user = rows[0]
-
-      const valid = await bcrypt.compare(password, user.password)
-
-      console.log("PASSWORD VALID:", valid)
-
-      if (!valid) {
-        return NextResponse.json({ success: false, step: "password" })
-      }
-
-      const res = NextResponse.json({ success: true, source: "db" })
-
-      res.cookies.set("user_id", String(user.id), {
-        httpOnly: true,
-        path: "/",
-        sameSite: "lax",
-        secure: true,
+    if (rows.length === 0) {
+      return NextResponse.json({
+        success: false,
+        code: "USER_NOT_FOUND"
       })
-
-      return res
     }
 
-    // 2️⃣ ENV fallback
-    if (process.env.SQL_EDITOR_PASSWORD && password === process.env.SQL_EDITOR_PASSWORD) {
-      const res = NextResponse.json({ success: true, source: "env" })
+    const user = rows[0]
 
-      res.cookies.set("user_id", "0", {
-        httpOnly: true,
-        path: "/",
-        sameSite: "lax",
-        secure: true,
+    const valid = await bcrypt.compare(password, user.password)
+
+    if (!valid) {
+      return NextResponse.json({
+        success: false,
+        code: "INVALID_PASSWORD"
       })
-
-      return res
     }
 
-    // 3️⃣ FAIL
-    return NextResponse.json({ success: false, step: "no_user" })
+    const res = NextResponse.json({
+      success: true,
+      code: "DB_LOGIN_SUCCESS",
+      role: user.role
+    })
+
+    res.cookies.set("user_id", String(user.id), {
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+      secure: true,
+    })
+
+    return res
 
   } catch (err) {
-    console.error("LOGIN ERROR:", err)
+    console.error(err)
 
-    return NextResponse.json(
-      { success: false, error: "server_error" },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      success: false,
+      code: "SERVER_ERROR"
+    })
   }
 }
