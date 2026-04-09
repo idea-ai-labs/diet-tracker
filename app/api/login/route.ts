@@ -3,48 +3,65 @@ import bcrypt from "bcryptjs"
 import { NextResponse } from "next/server"
 
 export async function POST(req: Request) {
+  try {
+    const body = await req.json()
+    const { username, password } = body
 
-  const { username, password } = await req.json()
+    console.log("LOGIN ATTEMPT:", username)
 
-  // 1️⃣ Check DB first
-  const { rows } = await sql`
-    SELECT id, password, role FROM users WHERE username=${username}
-  `
+    const { rows } = await sql`
+      SELECT id, password, role FROM users WHERE username=${username}
+    `
 
-  if(rows.length > 0){
-    const user = rows[0]
-    const valid = await bcrypt.compare(password, user.password)
-    if(!valid){
-      return NextResponse.json({ success: false })
+    console.log("DB ROWS:", rows)
+
+    // 1️⃣ DB user found
+    if (rows.length > 0) {
+      const user = rows[0]
+
+      const valid = await bcrypt.compare(password, user.password)
+
+      console.log("PASSWORD VALID:", valid)
+
+      if (!valid) {
+        return NextResponse.json({ success: false, step: "password" })
+      }
+
+      const res = NextResponse.json({ success: true, source: "db" })
+
+      res.cookies.set("user_id", String(user.id), {
+        httpOnly: true,
+        path: "/",
+        sameSite: "lax",
+        secure: true,
+      })
+
+      return res
     }
 
-    const res = NextResponse.json({ success: true })
+    // 2️⃣ ENV fallback
+    if (process.env.SQL_EDITOR_PASSWORD && password === process.env.SQL_EDITOR_PASSWORD) {
+      const res = NextResponse.json({ success: true, source: "env" })
 
-    res.cookies.set("user_id", String(user.id), {
-      httpOnly: true,
-      path: "/",
-      sameSite: "lax",
-      secure: true
-    })
+      res.cookies.set("user_id", "0", {
+        httpOnly: true,
+        path: "/",
+        sameSite: "lax",
+        secure: true,
+      })
 
-    return res
+      return res
+    }
+
+    // 3️⃣ FAIL
+    return NextResponse.json({ success: false, step: "no_user" })
+
+  } catch (err) {
+    console.error("LOGIN ERROR:", err)
+
+    return NextResponse.json(
+      { success: false, error: "server_error" },
+      { status: 500 }
+    )
   }
-
-  // 2️⃣ Fallback to ENV variable
-  if(process.env.SQL_EDITOR_PASSWORD && password === process.env.SQL_EDITOR_PASSWORD){
-    // temporary "super-admin" session
-    const res = NextResponse.json({ success: true, fallback: true })
-
-    res.cookies.set("user_id", "0", { // 0 means ENV fallback
-      httpOnly: true,
-      path: "/",
-      sameSite: "lax",
-      secure: true
-    })
-
-    return res
-  }
-
-  // 3️⃣ Invalid login
-  return NextResponse.json({ success: false })
 }
