@@ -1,5 +1,4 @@
 import { sql } from "@vercel/postgres"
-import { requireWriteAccess } from "@/lib/permissions"
 
 // ---------- GET ----------
 export async function GET() {
@@ -16,13 +15,14 @@ export async function GET() {
 // ---------- POST ----------
 export async function POST(req: Request) {
   try {
-    await requireWriteAccess()
-
     const { reading_time, systolic, diastolic, heartRate, comments } =
       await req.json()
 
     if (!reading_time || !systolic || !diastolic) {
-      return Response.json({ success: false, error: "Missing required fields" }, { status: 400 })
+      return Response.json(
+        { success: false, error: "Missing required fields" },
+        { status: 400 }
+      )
     }
 
     await sql`
@@ -39,21 +39,25 @@ export async function POST(req: Request) {
     `
 
     return Response.json({ success: true })
-  } catch (e: any) {
-    return Response.json({ success: false, error: e.message }, { status: 403 })
+  } catch (err: any) {
+    return Response.json(
+      { success: false, error: err.message },
+      { status: 500 }
+    )
   }
 }
 
 // ---------- PUT ----------
 export async function PUT(req: Request) {
   try {
-    await requireWriteAccess()
-
     const { id, reading_time, systolic, diastolic, heartRate, comments } =
       await req.json()
 
     if (!id) {
-      return Response.json({ success: false, error: "Missing ID" }, { status: 400 })
+      return Response.json(
+        { success: false, error: "Missing id" },
+        { status: 400 }
+      )
     }
 
     await sql`
@@ -68,20 +72,24 @@ export async function PUT(req: Request) {
     `
 
     return Response.json({ success: true })
-  } catch (e: any) {
-    return Response.json({ success: false, error: e.message }, { status: 403 })
+  } catch (err: any) {
+    return Response.json(
+      { success: false, error: err.message },
+      { status: 500 }
+    )
   }
 }
 
 // ---------- DELETE ----------
 export async function DELETE(req: Request) {
   try {
-    await requireWriteAccess()
-
     const { id } = await req.json()
 
     if (!id) {
-      return Response.json({ success: false, error: "Missing ID" }, { status: 400 })
+      return Response.json(
+        { success: false, error: "Missing id" },
+        { status: 400 }
+      )
     }
 
     await sql`
@@ -90,7 +98,10 @@ export async function DELETE(req: Request) {
     `
 
     return Response.json({ success: true })
-  } catch (e: any) {
-    return Response.json({ success: false, error: e.message }, { status: 403 })
+  } catch (err: any) {
+    return Response.json(
+      { success: false, error: err.message },
+      { status: 500 }
+    )
   }
 }
