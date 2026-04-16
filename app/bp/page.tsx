@@ -24,40 +24,49 @@ interface BPRecord {
   comments: string
 }
 
-// ================= HELPERS =================
-
-// UTC → Local display
-const formatDisplay = (ts: string) =>
-  new Date(ts).toLocaleString("en-US", {
-    month: "2-digit",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  })
-
-// UTC → Chart label
-const formatChartLabel = (ts: string) =>
-  new Date(ts).toLocaleString("en-US", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  })
-
-// Local → datetime-local input
-const toInputValue = (ts: string) =>
-  new Date(ts).toISOString().slice(0, 16)
-
 export default function BPPage() {
 
-  // ================= STATE =================
-  const [readingTime, setReadingTime] = useState(
-    new Date().toISOString().slice(0, 16)
-  )
+  // ===============================
+  // 🧠 UTC SAFE HELPERS (FINAL FIX)
+  // ===============================
 
+  // Local → input field (FIXES +4 hr issue)
+  const getLocalInputTime = () => {
+    const now = new Date()
+    const offset = now.getTimezoneOffset()
+    const local = new Date(now.getTime() - offset * 60000)
+    return local.toISOString().slice(0, 16)
+  }
+
+  // UTC → readable local display
+  const formatDisplay = (ts: string) => {
+    return new Date(ts).toLocaleString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })
+  }
+
+  const formatChartLabel = (ts: string) => {
+    return new Date(ts).toLocaleString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })
+  }
+
+  const parse = (ts: string) => new Date(ts)
+
+  // ===============================
+  // STATE
+  // ===============================
+
+  const [readingTime, setReadingTime] = useState(getLocalInputTime)
   const [records, setRecords] = useState<BPRecord[]>([])
   const [systolic, setSystolic] = useState("")
   const [diastolic, setDiastolic] = useState("")
@@ -68,7 +77,10 @@ export default function BPPage() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
 
-  // ================= LOAD =================
+  // ===============================
+  // LOAD
+  // ===============================
+
   async function loadRecords() {
     const res = await fetch("/api/bp")
     const data = await res.json()
@@ -79,9 +91,12 @@ export default function BPPage() {
     loadRecords()
   }, [])
 
-  // ================= ACTIONS =================
+  // ===============================
+  // RESET
+  // ===============================
+
   function resetForm() {
-    setReadingTime(new Date().toISOString().slice(0, 16))
+    setReadingTime(getLocalInputTime()) // FIXED
     setSystolic("")
     setDiastolic("")
     setHeartRate("")
@@ -89,41 +104,55 @@ export default function BPPage() {
     setEditingId(null)
   }
 
+  // ===============================
+  // SAVE (STORE UTC PROPERLY)
+  // ===============================
+
   async function saveRecord() {
     const payload = {
-      reading_time: readingTime,
+      reading_time: new Date(readingTime).toISOString(), // 🔥 CRITICAL FIX
       systolic: Number(systolic),
       diastolic: Number(diastolic),
       heartRate: Number(heartRate),
       comments,
     }
 
-    if (editingId) {
-      await fetch("/api/bp", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: editingId, ...payload }),
-      })
-    } else {
-      await fetch("/api/bp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-    }
+    const method = editingId ? "PUT" : "POST"
+
+    await fetch("/api/bp", {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editingId ? { id: editingId, ...payload } : payload),
+    })
 
     resetForm()
     loadRecords()
   }
 
+  // ===============================
+  // EDIT
+  // ===============================
+
   function editRecord(r: BPRecord) {
     setEditingId(r.id)
-    setReadingTime(toInputValue(r.reading_time))
+
+    // convert UTC → local input
+    const d = new Date(r.reading_time)
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16)
+
+    setReadingTime(local)
+
     setSystolic(String(r.systolic))
     setDiastolic(String(r.diastolic))
     setHeartRate(String(r.heart_rate || ""))
     setComments(r.comments || "")
   }
+
+  // ===============================
+  // DELETE
+  // ===============================
 
   async function deleteRecord(id: number) {
     await fetch("/api/bp", {
@@ -131,12 +160,16 @@ export default function BPPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     })
+
     loadRecords()
   }
 
-  // ================= FILTER =================
+  // ===============================
+  // FILTER
+  // ===============================
+
   const filteredRecords = records.filter((r) => {
-    const d = new Date(r.reading_time)
+    const d = parse(r.reading_time)
 
     if (startDate && d < new Date(startDate)) return false
     if (endDate && d > new Date(endDate)) return false
@@ -144,7 +177,10 @@ export default function BPPage() {
     return true
   })
 
-  // ================= CHART =================
+  // ===============================
+  // CHART
+  // ===============================
+
   const chartData = {
     labels: filteredRecords.map((r) => formatChartLabel(r.reading_time)),
     datasets: [
@@ -169,18 +205,14 @@ export default function BPPage() {
     ],
   }
 
-  const chartOptions = {
-    responsive: true,
-    plugins: {
-      legend: { position: "top" as const },
-      title: { display: true, text: "BP Trend" },
-    },
-  }
+  // ===============================
+  // UI
+  // ===============================
 
-  // ================= UI =================
   return (
     <div className="container">
 
+      {/* ENTRY */}
       <div className="card">
         <h2>Blood Pressure Entry</h2>
 
@@ -200,10 +232,23 @@ export default function BPPage() {
         </button>
       </div>
 
+      {/* HISTORY */}
       <div className="card">
         <h2>History</h2>
 
+        {/* FIXED HEADER (was missing) */}
         <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Systolic</th>
+              <th>Diastolic</th>
+              <th>HR</th>
+              <th>Comments</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
           <tbody>
             {records.map((r) => (
               <tr key={r.id}>
@@ -211,6 +256,7 @@ export default function BPPage() {
                 <td>{r.systolic}</td>
                 <td>{r.diastolic}</td>
                 <td>{r.heart_rate}</td>
+                <td>{r.comments}</td>
                 <td>
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button onClick={() => editRecord(r)}>Edit</button>
@@ -223,9 +269,10 @@ export default function BPPage() {
         </table>
       </div>
 
+      {/* CHART */}
       <div className="card">
         <h2>BP Trend</h2>
-        <Line data={chartData} options={chartOptions} />
+        <Line data={chartData} />
       </div>
 
     </div>
