@@ -26,12 +26,11 @@ interface BPRecord {
 
 export default function BPPage() {
 
-  // ---------- Helpers (centralized) ----------
+  // ---------- Helpers ----------
 
-  // Convert DB timestamp → safe JS Date (no timezone shift)
+  // 🔥 CRITICAL FIX: always normalize DB timestamp
   const parseLocal = (ts: string) => new Date(ts.replace(" ", "T"))
 
-  // Format for display
   const formatDisplay = (ts: string) =>
     parseLocal(ts).toLocaleString("en-US", {
       year: "numeric",
@@ -42,18 +41,15 @@ export default function BPPage() {
       hour12: true,
     })
 
-  // Format for datetime-local input
   const formatInput = (ts: string) =>
     ts.replace(" ", "T").slice(0, 16)
 
-  // Get current local datetime for new entry
   const getNowLocal = () => {
     const now = new Date()
     const tzOffset = now.getTimezoneOffset() * 60000
     return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16)
   }
 
-  // Determine time-of-day tag
   const getTag = (ts: string) => {
     const hour = parseLocal(ts).getHours()
     if (hour < 12) return "Morning ☀️"
