@@ -24,47 +24,43 @@ interface BPRecord {
   comments: string
 }
 
+// ================= FIXED TIMEZONE (ET) =================
+const TZ = "America/New_York"
+
+// ---------------- DISPLAY FORMAT (ALWAYS ET) ----------------
+const formatDisplay = (ts: string) =>
+  new Date(ts).toLocaleString("en-US", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })
+
+// ---------------- CHART FORMAT (ALWAYS ET) ----------------
+const formatChartLabel = (ts: string) =>
+  new Date(ts).toLocaleString("en-US", {
+    timeZone: TZ,
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })
+
+// ---------------- INPUT FIX (LOCAL → INPUT FIELD) ----------------
+const getLocalInputTime = () => {
+  const now = new Date()
+  const offset = now.getTimezoneOffset() * 60000
+  return new Date(now.getTime() - offset).toISOString().slice(0, 16)
+}
+
+// ---------------- INPUT → UTC ----------------
+const toUTC = (value: string) => new Date(value).toISOString()
+
 export default function BPPage() {
-
-  // ===============================
-  // 🧠 UTC SAFE HELPERS (FINAL FIX)
-  // ===============================
-
-  // Local → input field (FIXES +4 hr issue)
-  const getLocalInputTime = () => {
-    const now = new Date()
-    const offset = now.getTimezoneOffset()
-    const local = new Date(now.getTime() - offset * 60000)
-    return local.toISOString().slice(0, 16)
-  }
-
-  // UTC → readable local display
-  const formatDisplay = (ts: string) => {
-    return new Date(ts).toLocaleString("en-US", {
-      month: "2-digit",
-      day: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
-
-  const formatChartLabel = (ts: string) => {
-    return new Date(ts).toLocaleString("en-US", {
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
-
-  const parse = (ts: string) => new Date(ts)
-
-  // ===============================
-  // STATE
-  // ===============================
 
   const [readingTime, setReadingTime] = useState(getLocalInputTime)
   const [records, setRecords] = useState<BPRecord[]>([])
@@ -77,10 +73,7 @@ export default function BPPage() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
 
-  // ===============================
-  // LOAD
-  // ===============================
-
+  // ---------------- LOAD ----------------
   async function loadRecords() {
     const res = await fetch("/api/bp")
     const data = await res.json()
@@ -91,12 +84,9 @@ export default function BPPage() {
     loadRecords()
   }, [])
 
-  // ===============================
-  // RESET
-  // ===============================
-
+  // ---------------- RESET ----------------
   function resetForm() {
-    setReadingTime(getLocalInputTime()) // FIXED
+    setReadingTime(getLocalInputTime())
     setSystolic("")
     setDiastolic("")
     setHeartRate("")
@@ -104,13 +94,10 @@ export default function BPPage() {
     setEditingId(null)
   }
 
-  // ===============================
-  // SAVE (STORE UTC PROPERLY)
-  // ===============================
-
+  // ---------------- SAVE ----------------
   async function saveRecord() {
     const payload = {
-      reading_time: new Date(readingTime).toISOString(), // 🔥 CRITICAL FIX
+      reading_time: toUTC(readingTime), // 🔥 CRITICAL FIX
       systolic: Number(systolic),
       diastolic: Number(diastolic),
       heartRate: Number(heartRate),
@@ -129,31 +116,23 @@ export default function BPPage() {
     loadRecords()
   }
 
-  // ===============================
-  // EDIT
-  // ===============================
-
+  // ---------------- EDIT ----------------
   function editRecord(r: BPRecord) {
     setEditingId(r.id)
 
-    // convert UTC → local input
     const d = new Date(r.reading_time)
     const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
       .toISOString()
       .slice(0, 16)
 
     setReadingTime(local)
-
     setSystolic(String(r.systolic))
     setDiastolic(String(r.diastolic))
     setHeartRate(String(r.heart_rate || ""))
     setComments(r.comments || "")
   }
 
-  // ===============================
-  // DELETE
-  // ===============================
-
+  // ---------------- DELETE ----------------
   async function deleteRecord(id: number) {
     await fetch("/api/bp", {
       method: "DELETE",
@@ -164,12 +143,9 @@ export default function BPPage() {
     loadRecords()
   }
 
-  // ===============================
-  // FILTER
-  // ===============================
-
+  // ---------------- FILTER ----------------
   const filteredRecords = records.filter((r) => {
-    const d = parse(r.reading_time)
+    const d = new Date(r.reading_time)
 
     if (startDate && d < new Date(startDate)) return false
     if (endDate && d > new Date(endDate)) return false
@@ -177,10 +153,7 @@ export default function BPPage() {
     return true
   })
 
-  // ===============================
-  // CHART
-  // ===============================
-
+  // ---------------- CHART ----------------
   const chartData = {
     labels: filteredRecords.map((r) => formatChartLabel(r.reading_time)),
     datasets: [
@@ -204,10 +177,6 @@ export default function BPPage() {
       },
     ],
   }
-
-  // ===============================
-  // UI
-  // ===============================
 
   return (
     <div className="container">
@@ -236,7 +205,6 @@ export default function BPPage() {
       <div className="card">
         <h2>History</h2>
 
-        {/* FIXED HEADER (was missing) */}
         <table>
           <thead>
             <tr>
