@@ -24,75 +24,51 @@ interface BPRecord {
   comments: string
 }
 
+// ================= HELPERS =================
+
+// UTC → Local display
+const formatDisplay = (ts: string) =>
+  new Date(ts).toLocaleString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })
+
+// UTC → Chart label
+const formatChartLabel = (ts: string) =>
+  new Date(ts).toLocaleString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })
+
+// Local → datetime-local input
+const toInputValue = (ts: string) =>
+  new Date(ts).toISOString().slice(0, 16)
+
 export default function BPPage() {
 
-  // ==============================
-  // 🔥 TIME NORMALIZATION (FIX ALL ISSUES)
-  // ==============================
-  const parseDate = (ts: string) => {
-    if (!ts) return new Date()
-    return new Date(ts.replace(" ", "T"))
-  }
+  // ================= STATE =================
+  const [readingTime, setReadingTime] = useState(
+    new Date().toISOString().slice(0, 16)
+  )
 
-  // ==============================
-  // 🕒 HISTORY FORMAT (AM/PM RESTORED)
-  // ==============================
-  const formatHistory = (ts: string) => {
-    const d = parseDate(ts)
-
-    return d.toLocaleString("en-US", {
-      month: "2-digit",
-      day: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
-
-  // ==============================
-  // 📥 INPUT FORMAT
-  // ==============================
-  const formatInput = (ts: string) =>
-    ts ? ts.replace(" ", "T").slice(0, 16) : ""
-
-  // ==============================
-  // ⏱ CURRENT TIME DEFAULT
-  // ==============================
-  const getNowLocal = () => {
-    const now = new Date()
-    const offset = now.getTimezoneOffset() * 60000
-    return new Date(now.getTime() - offset).toISOString().slice(0, 16)
-  }
-
-  // ==============================
-  // 🌅 TAG LOGIC
-  // ==============================
-  const getTag = (ts: string) => {
-    const hour = parseDate(ts).getHours()
-
-    if (hour < 12) return "Morning ☀️"
-    if (hour < 17) return "Afternoon 🌤"
-    if (hour < 21) return "Evening 🌙"
-    return "Night 🌑"
-  }
-
-  // ==============================
-  // STATE
-  // ==============================
-  const [readingTime, setReadingTime] = useState(getNowLocal)
   const [records, setRecords] = useState<BPRecord[]>([])
   const [systolic, setSystolic] = useState("")
   const [diastolic, setDiastolic] = useState("")
   const [heartRate, setHeartRate] = useState("")
   const [comments, setComments] = useState("")
   const [editingId, setEditingId] = useState<number | null>(null)
+
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
 
-  // ==============================
-  // LOAD
-  // ==============================
+  // ================= LOAD =================
   async function loadRecords() {
     const res = await fetch("/api/bp")
     const data = await res.json()
@@ -103,11 +79,9 @@ export default function BPPage() {
     loadRecords()
   }, [])
 
-  // ==============================
-  // RESET
-  // ==============================
+  // ================= ACTIONS =================
   function resetForm() {
-    setReadingTime(getNowLocal())
+    setReadingTime(new Date().toISOString().slice(0, 16))
     setSystolic("")
     setDiastolic("")
     setHeartRate("")
@@ -115,12 +89,7 @@ export default function BPPage() {
     setEditingId(null)
   }
 
-  // ==============================
-  // SAVE
-  // ==============================
   async function saveRecord() {
-    if (!systolic || !diastolic) return
-
     const payload = {
       reading_time: readingTime,
       systolic: Number(systolic),
@@ -147,21 +116,15 @@ export default function BPPage() {
     loadRecords()
   }
 
-  // ==============================
-  // EDIT
-  // ==============================
   function editRecord(r: BPRecord) {
     setEditingId(r.id)
-    setReadingTime(formatInput(r.reading_time))
+    setReadingTime(toInputValue(r.reading_time))
     setSystolic(String(r.systolic))
     setDiastolic(String(r.diastolic))
     setHeartRate(String(r.heart_rate || ""))
     setComments(r.comments || "")
   }
 
-  // ==============================
-  // DELETE
-  // ==============================
   async function deleteRecord(id: number) {
     await fetch("/api/bp", {
       method: "DELETE",
@@ -171,11 +134,9 @@ export default function BPPage() {
     loadRecords()
   }
 
-  // ==============================
-  // FILTER
-  // ==============================
+  // ================= FILTER =================
   const filteredRecords = records.filter((r) => {
-    const d = parseDate(r.reading_time)
+    const d = new Date(r.reading_time)
 
     if (startDate && d < new Date(startDate)) return false
     if (endDate && d > new Date(endDate)) return false
@@ -183,19 +144,9 @@ export default function BPPage() {
     return true
   })
 
-  // ==============================
-  // CHART (FIXED TIME SHIFT)
-  // ==============================
+  // ================= CHART =================
   const chartData = {
-    labels: filteredRecords.map((r) =>
-      parseDate(r.reading_time).toLocaleString("en-US", {
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      })
-    ),
+    labels: filteredRecords.map((r) => formatChartLabel(r.reading_time)),
     datasets: [
       {
         label: "Systolic",
@@ -226,13 +177,10 @@ export default function BPPage() {
     },
   }
 
-  // ==============================
-  // UI
-  // ==============================
+  // ================= UI =================
   return (
     <div className="container">
 
-      {/* ENTRY */}
       <div className="card">
         <h2>Blood Pressure Entry</h2>
 
@@ -252,32 +200,17 @@ export default function BPPage() {
         </button>
       </div>
 
-      {/* HISTORY */}
       <div className="card">
         <h2>History</h2>
 
         <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Tag</th>
-              <th>Systolic</th>
-              <th>Diastolic</th>
-              <th>HR</th>
-              <th>Comments</th>
-              <th></th>
-            </tr>
-          </thead>
-
           <tbody>
             {records.map((r) => (
               <tr key={r.id}>
-                <td>{formatHistory(r.reading_time)}</td>
-                <td>{getTag(r.reading_time)}</td>
+                <td>{formatDisplay(r.reading_time)}</td>
                 <td>{r.systolic}</td>
                 <td>{r.diastolic}</td>
                 <td>{r.heart_rate}</td>
-                <td>{r.comments}</td>
                 <td>
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button onClick={() => editRecord(r)}>Edit</button>
@@ -290,7 +223,6 @@ export default function BPPage() {
         </table>
       </div>
 
-      {/* CHART */}
       <div className="card">
         <h2>BP Trend</h2>
         <Line data={chartData} options={chartOptions} />
