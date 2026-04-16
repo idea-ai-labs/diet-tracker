@@ -1,6 +1,6 @@
 import { sql } from "@vercel/postgres"
 
-// ================= GET =================
+// ---------------- GET ----------------
 export async function GET() {
   const { rows } = await sql`
     SELECT
@@ -18,7 +18,7 @@ export async function GET() {
   return Response.json(rows)
 }
 
-// ================= POST =================
+// ---------------- POST ----------------
 export async function POST(req: Request) {
   const { reading_time, systolic, diastolic, heartRate, comments } =
     await req.json()
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
   return Response.json({ success: true })
 }
 
-// ================= PUT =================
+// ---------------- PUT ----------------
 export async function PUT(req: Request) {
   const { id, reading_time, systolic, diastolic, heartRate, comments } =
     await req.json()
@@ -63,7 +63,7 @@ export async function PUT(req: Request) {
   return Response.json({ success: true })
 }
 
-// ================= DELETE =================
+// ---------------- DELETE ----------------
 export async function DELETE(req: Request) {
   const { id } = await req.json()
 
