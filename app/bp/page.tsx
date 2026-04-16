@@ -26,40 +26,50 @@ interface BPRecord {
 
 export default function BPPage() {
 
-  // ---------- Helpers ----------
-
-  // 🔥 CRITICAL FIX: always normalize DB timestamp
-  const parseLocal = (ts: string) => new Date(ts.replace(" ", "T"))
-
-  const formatDisplay = (ts: string) =>
-    parseLocal(ts).toLocaleString("en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    })
-
-  const formatInput = (ts: string) =>
-    ts.replace(" ", "T").slice(0, 16)
-
-  const getNowLocal = () => {
-    const now = new Date()
-    const tzOffset = now.getTimezoneOffset() * 60000
-    return new Date(now.getTime() - tzOffset).toISOString().slice(0, 16)
+  // ---------- SAFE PARSER (for chart + tag only) ----------
+  const parseDate = (ts: string) => {
+    if (!ts) return new Date()
+    return new Date(ts.replace(" ", "T"))
   }
 
+  // ---------- HISTORY DISPLAY (NO Date() = NO timezone shift) ----------
+  const formatHistory = (ts: string) => {
+    if (!ts) return ""
+
+    const [datePart, timePart] = ts.split(" ")
+    if (!datePart || !timePart) return ts
+
+    const [year, month, day] = datePart.split("-")
+    const [hourStr, minute] = timePart.split(":")
+
+    let hour = Number(hourStr)
+    const ampm = hour >= 12 ? "PM" : "AM"
+    hour = hour % 12 || 12
+
+    return `${month}/${day}/${year} ${hour}:${minute} ${ampm}`
+  }
+
+  // ---------- INPUT FORMAT ----------
+  const formatInput = (ts: string) =>
+    ts ? ts.replace(" ", "T").slice(0, 16) : ""
+
+  // ---------- CURRENT TIME ----------
+  const getNowLocal = () => {
+    const now = new Date()
+    const offset = now.getTimezoneOffset() * 60000
+    return new Date(now.getTime() - offset).toISOString().slice(0, 16)
+  }
+
+  // ---------- TAG ----------
   const getTag = (ts: string) => {
-    const hour = parseLocal(ts).getHours()
+    const hour = parseDate(ts).getHours()
     if (hour < 12) return "Morning ☀️"
     if (hour < 17) return "Afternoon 🌤"
     if (hour < 21) return "Evening 🌙"
     return "Night 🌑"
   }
 
-  // ---------- State ----------
-
+  // ---------- STATE ----------
   const [readingTime, setReadingTime] = useState(getNowLocal)
   const [records, setRecords] = useState<BPRecord[]>([])
   const [systolic, setSystolic] = useState("")
@@ -70,8 +80,7 @@ export default function BPPage() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
 
-  // ---------- Load Data ----------
-
+  // ---------- LOAD ----------
   async function loadRecords() {
     const res = await fetch("/api/bp")
     const data = await res.json()
@@ -82,8 +91,7 @@ export default function BPPage() {
     loadRecords()
   }, [])
 
-  // ---------- Actions ----------
-
+  // ---------- RESET ----------
   function resetForm() {
     setReadingTime(getNowLocal())
     setSystolic("")
@@ -93,6 +101,7 @@ export default function BPPage() {
     setEditingId(null)
   }
 
+  // ---------- SAVE ----------
   async function saveRecord() {
     if (!systolic || !diastolic) return
 
@@ -122,6 +131,7 @@ export default function BPPage() {
     loadRecords()
   }
 
+  // ---------- EDIT ----------
   function editRecord(r: BPRecord) {
     setEditingId(r.id)
     setReadingTime(formatInput(r.reading_time))
@@ -131,6 +141,7 @@ export default function BPPage() {
     setComments(r.comments || "")
   }
 
+  // ---------- DELETE ----------
   async function deleteRecord(id: number) {
     await fetch("/api/bp", {
       method: "DELETE",
@@ -140,22 +151,20 @@ export default function BPPage() {
     loadRecords()
   }
 
-  // ---------- Filtering ----------
-
+  // ---------- FILTER ----------
   const filteredRecords = records.filter((r) => {
-    const date = parseLocal(r.reading_time)
+    const d = parseDate(r.reading_time)
 
-    if (startDate && date < new Date(startDate)) return false
-    if (endDate && date > new Date(endDate)) return false
+    if (startDate && d < new Date(startDate)) return false
+    if (endDate && d > new Date(endDate)) return false
 
     return true
   })
 
-  // ---------- Chart ----------
-
+  // ---------- CHART ----------
   const chartData = {
     labels: filteredRecords.map((r) =>
-      parseLocal(r.reading_time).toLocaleString("en-US", {
+      parseDate(r.reading_time).toLocaleString("en-US", {
         month: "2-digit",
         day: "2-digit",
         hour: "2-digit",
@@ -168,21 +177,18 @@ export default function BPPage() {
         label: "Systolic",
         data: filteredRecords.map((r) => r.systolic),
         borderColor: "#1976d2",
-        backgroundColor: "rgba(25,118,210,0.2)",
         tension: 0.3,
       },
       {
         label: "Diastolic",
         data: filteredRecords.map((r) => r.diastolic),
         borderColor: "#43a047",
-        backgroundColor: "rgba(67,160,71,0.2)",
         tension: 0.3,
       },
       {
         label: "Heart Rate",
         data: filteredRecords.map((r) => r.heart_rate),
         borderColor: "#fbc02d",
-        backgroundColor: "rgba(251,192,45,0.2)",
         tension: 0.3,
       },
     ],
@@ -197,48 +203,33 @@ export default function BPPage() {
   }
 
   // ---------- UI ----------
-
   return (
     <div className="container">
 
-      {/* Entry */}
+      {/* ENTRY */}
       <div className="card">
         <h2>Blood Pressure Entry</h2>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-          <div>
-            <label>Entry Time</label>
-            <input
-              type="datetime-local"
-              value={readingTime}
-              onChange={(e) => setReadingTime(e.target.value)}
-            />
-          </div>
+        <input
+          type="datetime-local"
+          value={readingTime}
+          onChange={(e) => setReadingTime(e.target.value)}
+        />
 
-          <div></div>
+        <input placeholder="Systolic" value={systolic} onChange={(e) => setSystolic(e.target.value)} />
+        <input placeholder="Diastolic" value={diastolic} onChange={(e) => setDiastolic(e.target.value)} />
+        <input placeholder="Heart Rate" value={heartRate} onChange={(e) => setHeartRate(e.target.value)} />
+        <input placeholder="Comments" value={comments} onChange={(e) => setComments(e.target.value)} />
 
-          <input placeholder="Systolic" value={systolic} onChange={(e) => setSystolic(e.target.value)} />
-          <input placeholder="Diastolic" value={diastolic} onChange={(e) => setDiastolic(e.target.value)} />
-          <input placeholder="Heart Rate" value={heartRate} onChange={(e) => setHeartRate(e.target.value)} />
-          <input placeholder="Comments" value={comments} onChange={(e) => setComments(e.target.value)} />
-        </div>
-
-        <div style={{ marginTop: "12px" }}>
-          <button onClick={saveRecord}>
-            {editingId ? "Update Entry" : "Save Entry"}
-          </button>
-
-          {editingId && (
-            <button className="secondary" style={{ marginLeft: "10px" }} onClick={resetForm}>
-              Cancel
-            </button>
-          )}
-        </div>
+        <button onClick={saveRecord}>
+          {editingId ? "Update Entry" : "Save Entry"}
+        </button>
       </div>
 
-      {/* History */}
+      {/* HISTORY */}
       <div className="card">
         <h2>History</h2>
+
         <table>
           <thead>
             <tr>
@@ -251,20 +242,19 @@ export default function BPPage() {
               <th></th>
             </tr>
           </thead>
+
           <tbody>
             {records.map((r) => (
               <tr key={r.id}>
-                <td>{formatDisplay(r.reading_time)}</td>
+                <td>{formatHistory(r.reading_time)}</td>
                 <td>{getTag(r.reading_time)}</td>
                 <td>{r.systolic}</td>
                 <td>{r.diastolic}</td>
                 <td>{r.heart_rate}</td>
                 <td>{r.comments}</td>
                 <td>
-                  <button className="secondary" onClick={() => editRecord(r)}>Edit</button>
-                  <button className="danger" style={{ marginLeft: "6px" }} onClick={() => deleteRecord(r.id)}>
-                    Delete
-                  </button>
+                  <button onClick={() => editRecord(r)}>Edit</button>
+                  <button onClick={() => deleteRecord(r.id)}>Delete</button>
                 </td>
               </tr>
             ))}
@@ -272,24 +262,12 @@ export default function BPPage() {
         </table>
       </div>
 
-      {/* Chart */}
+      {/* CHART */}
       <div className="card">
         <h2>BP Trend</h2>
-
-        <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-          <div>
-            <label>Start Date</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </div>
-
-          <div>
-            <label>End Date</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          </div>
-        </div>
-
         <Line data={chartData} options={chartOptions} />
       </div>
+
     </div>
   )
 }
