@@ -1,9 +1,15 @@
 import { sql } from "@vercel/postgres"
 
-// ---------- GET ----------
+// ================= GET =================
 export async function GET() {
   const { rows } = await sql`
-    SELECT id, reading_time, systolic, diastolic, heart_rate, comments
+    SELECT
+      id,
+      reading_time,
+      systolic,
+      diastolic,
+      heart_rate,
+      comments
     FROM blood_pressure
     ORDER BY reading_time DESC
     LIMIT 50
@@ -12,96 +18,59 @@ export async function GET() {
   return Response.json(rows)
 }
 
-// ---------- POST ----------
+// ================= POST =================
 export async function POST(req: Request) {
-  try {
-    const { reading_time, systolic, diastolic, heartRate, comments } =
-      await req.json()
+  const { reading_time, systolic, diastolic, heartRate, comments } =
+    await req.json()
 
-    if (!reading_time || !systolic || !diastolic) {
-      return Response.json(
-        { success: false, error: "Missing required fields" },
-        { status: 400 }
-      )
-    }
+  // 🔥 FORCE UTC STORAGE
+  const utcTime = new Date(reading_time).toISOString()
 
-    await sql`
-      INSERT INTO blood_pressure
-      (reading_time, systolic, diastolic, heart_rate, comments)
-      VALUES
-      (
-        ${reading_time},
-        ${Number(systolic)},
-        ${Number(diastolic)},
-        ${heartRate ? Number(heartRate) : null},
-        ${comments || ""}
-      )
-    `
-
-    return Response.json({ success: true })
-  } catch (err: any) {
-    return Response.json(
-      { success: false, error: err.message },
-      { status: 500 }
+  await sql`
+    INSERT INTO blood_pressure
+    (reading_time, systolic, diastolic, heart_rate, comments)
+    VALUES
+    (
+      ${utcTime},
+      ${Number(systolic)},
+      ${Number(diastolic)},
+      ${heartRate ? Number(heartRate) : null},
+      ${comments || ""}
     )
-  }
+  `
+
+  return Response.json({ success: true })
 }
 
-// ---------- PUT ----------
+// ================= PUT =================
 export async function PUT(req: Request) {
-  try {
-    const { id, reading_time, systolic, diastolic, heartRate, comments } =
-      await req.json()
+  const { id, reading_time, systolic, diastolic, heartRate, comments } =
+    await req.json()
 
-    if (!id) {
-      return Response.json(
-        { success: false, error: "Missing id" },
-        { status: 400 }
-      )
-    }
+  const utcTime = new Date(reading_time).toISOString()
 
-    await sql`
-      UPDATE blood_pressure
-      SET
-        reading_time = ${reading_time},
-        systolic = ${Number(systolic)},
-        diastolic = ${Number(diastolic)},
-        heart_rate = ${heartRate ? Number(heartRate) : null},
-        comments = ${comments || ""}
-      WHERE id = ${id}
-    `
+  await sql`
+    UPDATE blood_pressure
+    SET
+      reading_time = ${utcTime},
+      systolic = ${Number(systolic)},
+      diastolic = ${Number(diastolic)},
+      heart_rate = ${heartRate ? Number(heartRate) : null},
+      comments = ${comments || ""}
+    WHERE id = ${id}
+  `
 
-    return Response.json({ success: true })
-  } catch (err: any) {
-    return Response.json(
-      { success: false, error: err.message },
-      { status: 500 }
-    )
-  }
+  return Response.json({ success: true })
 }
 
-// ---------- DELETE ----------
+// ================= DELETE =================
 export async function DELETE(req: Request) {
-  try {
-    const { id } = await req.json()
+  const { id } = await req.json()
 
-    if (!id) {
-      return Response.json(
-        { success: false, error: "Missing id" },
-        { status: 400 }
-      )
-    }
+  await sql`
+    DELETE FROM blood_pressure
+    WHERE id = ${id}
+  `
 
-    await sql`
-      DELETE FROM blood_pressure
-      WHERE id = ${id}
-    `
-
-    return Response.json({ success: true })
-  } catch (err: any) {
-    return Response.json(
-      { success: false, error: err.message },
-      { status: 500 }
-    )
-  }
+  return Response.json({ success: true })
 }
